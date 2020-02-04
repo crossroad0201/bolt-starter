@@ -51,71 +51,99 @@ app.command("/open-modal", ({ ack, body, context }) => {
         "callback_id": "task-modal",
         "private_metadata": JSON.stringify(body), // Remove this when pasting this in Block Kit Builder
         "title": {
-          "type": "plain_text",
-          "text": "Create a task",
-          "emoji": true
-        },
-        "submit": {
-          "type": "plain_text",
-          "text": "Submit",
-          "emoji": true
-        },
-        "close": {
-          "type": "plain_text",
-          "text": "Cancel",
-          "emoji": true
-        },
-        "blocks": [
-          {
-            "type": "input",
-            "block_id": "input-title",
-            "element": {
-              "type": "plain_text_input",
-              "action_id": "input",
-              "initial_value": body.text // Remove this when pasting this in Block Kit Builder
-            },
-            "label": {
-              "type": "plain_text",
-              "text": "Title",
-              "emoji": true
-            },
-            "optional": false
+            "type": "plain_text",
+            "text": "休暇申請",
+            "emoji": true
           },
-          {
-            "type": "input",
-            "block_id": "input-deadline",
-            "element": {
-              "type": "datepicker",
-              "action_id": "input",
-              "placeholder": {
+          "submit": {
+            "type": "plain_text",
+            "text": "送信",
+            "emoji": true
+          },
+          "close": {
+            "type": "plain_text",
+            "text": "キャンセル",
+            "emoji": true
+          },
+          "blocks": [
+            {
+              "block_id": "input-date",
+              "type": "input",
+              "element": {
+                "action_id": "input",
+                "type": "datepicker",
+                "placeholder": {
+                  "type": "plain_text",
+                  "text": "休暇を取得する日を選択",
+                  "emoji": true
+                }
+              },
+              "label": {
                 "type": "plain_text",
-                "text": "Select a date",
+                "text": "取得日：",
                 "emoji": true
               }
             },
-            "label": {
-              "type": "plain_text",
-              "text": "Deadline",
-              "emoji": true
+            {
+              "block_id": "input-type",
+              "type": "input",
+              "element": {
+                "action_id": "input",
+                "type": "static_select",
+                "placeholder": {
+                  "type": "plain_text",
+                  "text": "休暇の種別を選択",
+                  "emoji": true
+                },
+                "options": [
+                  {
+                    "text": {
+                      "type": "plain_text",
+                      "text": "全休",
+                      "emoji": true
+                    },
+                    "value": "ALL_DAY"
+                  },
+                  {
+                    "text": {
+                      "type": "plain_text",
+                      "text": "午前休",
+                      "emoji": true
+                    },
+                    "value": "AM"
+                  },
+                  {
+                    "text": {
+                      "type": "plain_text",
+                      "text": "午後休",
+                      "emoji": true
+                    },
+                    "value": "PM"
+                  }
+                ]
+              },
+              "label": {
+                "type": "plain_text",
+                "text": "休暇種別：",
+                "emoji": true
+              }
             },
-            "optional": true
-          },
-          {
-            "type": "input",
-            "block_id": "input-description",
-            "element": {
-              "type": "plain_text_input",
-              "action_id": "input",
-              "multiline": true
-            },
-            "label": {
-              "type": "plain_text",
-              "text": "Description",
-              "emoji": true
-            },
-            "optional": true
-          }
-        ]
+            {
+              "block_id": "input-reason",
+              "type": "input",
+              "element": {
+                "action_id": "input",
+                "type": "plain_text_input",
+                "multiline": true
+              },
+              "label": {
+                "type": "plain_text",
+                "text": "取得理由：",
+                "emoji": true
+              }
+            }
+          ]
+
       }
     })
     .then(res => {
@@ -138,63 +166,52 @@ app.view("task-modal", async ({ body, ack }) => {
   );
 
   const stateValues = body.view.state.values;
-  const title = stateValues["input-title"]["input"].value;
-  const deadline = stateValues["input-deadline"]["input"].selected_date;
-  const description = stateValues["input-description"]["input"].value;
+  const date = stateValues["input-date"]["input"].selected_date;
+  const type = stateValues["input-type"]["input"]["selected_option"].value;
+  const reason = stateValues["input-reason"]["input"].value;
 
-  const errors = {};
-  if (title.length <= 5) {
-    errors["input-title"] = "Title must be longer than 5 characters";
-  }
-  if (Object.entries(errors).length > 0) {
-    ack({
-      response_action: "errors",
-      errors: errors
-    });
-  } else {
-    // Save the input to somewhere
-    logger.info(
-      `Valid response:\ntitle: ${title}\ndeadline: ${deadline}\ndescription: ${description}\n`
-    );
-    // Post a message using response_url given by the slash comamnd
-    const command = JSON.parse(body.view.private_metadata);
-    await postViaResponseUrl(
-      command.response_url, // available for 30 minutes
-      {
-        "response_type": "ephemeral", // or "in_channel"
-        "text": "[fallback] Somehow Slack app failed to render blocks",
-        // Block Kit Builder - http://j.mp/bolt-starter-msg-json
-        "blocks": [
-          {
-            "type": "section",
-            "text": {
-              "type": "mrkdwn",
-              "text": "*Your new task was successfully created! :rocket:*"
-            }
-          },
-          {
-            "type": "section",
-            "fields": [
-              {
-                "type": "mrkdwn",
-                "text": `*Title:*\n${title}`
-              },
-              {
-                "type": "mrkdwn",
-                "text": `*Deadline:*\n${deadline}`
-              },
-              {
-                "type": "mrkdwn",
-                "text": `*Description:*\n${description}`
-              }
-            ]
+  // Save the input to somewhere
+  logger.info(
+    `Valid response:\ndate: ${date}\ntype: ${type}\nreason: ${reason}\n`
+  );
+  // Post a message using response_url given by the slash comamnd
+  const command = JSON.parse(body.view.private_metadata);
+  await postViaResponseUrl(
+    command.response_url, // available for 30 minutes
+    {
+      "response_type": "ephemeral", // or "in_channel"
+      "text": "[fallback] Somehow Slack app failed to render blocks",
+      // Block Kit Builder - http://j.mp/bolt-starter-msg-json
+      "blocks": [
+        {
+          "type": "section",
+          "text": {
+            "type": "mrkdwn",
+            "text": "*休暇を申請しました！！*"
           }
-        ]
-      }
-    );
+        },
+        {
+          "type": "section",
+          "fields": [
+            {
+              "type": "mrkdwn",
+              "text": `*取得日：* ${date}`
+            },
+            {
+              "type": "mrkdwn",
+              "text": `*休暇種別：* ${type}`
+            },
+            {
+              "type": "mrkdwn",
+              "text": `*取得理由：* ${reason}`
+            }
+          ]
+        }
+      ]
+    }
+  );
 
-    ack();
-  }
+  ack();
 });
 
 // ---------------------------------------------------------------
